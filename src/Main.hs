@@ -75,20 +75,19 @@ search query = Bloodhound.withBH HTTP.Client.defaultManagerSettings server $ do
 
   Monad.IO.liftIO $ putStrLn "Num\tRelevance Score\t\tMovie Title"
   let
-    printHit :: (Int, Bloodhound.Hit Aeson.Object) -> Bloodhound.BH IO ()
-    printHit (num, hit) = Monad.IO.liftIO $ Printf.printf "%d\t%0.6f\t\t%s\n" num score title
-      where
-      score :: Double
-      score = Maybe.fromMaybe 0.0 (Bloodhound.hitScore hit)
-      title :: String
-      title = case Bloodhound.hitSource hit of
-        Nothing -> ""
-        Just x ->
-          case HashMap.Lazy.lookup "title" x of
-            Just (Aeson.String t) -> Text.unpack t
-            _                     -> ""
+    getScore :: Bloodhound.Hit a -> Double
+    getScore hit = Maybe.fromMaybe 0.0 (Bloodhound.hitScore hit)
+    getTitle :: Bloodhound.Hit Aeson.Object -> String
+    getTitle hit = case Bloodhound.hitSource hit of
+      Nothing -> ""
+      Just x ->
+        case HashMap.Lazy.lookup "title" x of
+          Just (Aeson.String t) -> Text.unpack t
+          _                     -> ""
+    printHit :: (Int, Bloodhound.Hit Aeson.Object) -> IO ()
+    printHit (num, hit) = Printf.printf "%d\t%0.6f\t\t%s\n" num (getScore hit) (getTitle hit)
 
-  mapM_ printHit $ zip [1..] hits
+  Monad.IO.liftIO $ mapM_ printHit $ zip [1..] hits
 
   return ()
 
