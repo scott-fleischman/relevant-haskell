@@ -78,12 +78,11 @@ search query = Bloodhound.withBH HTTP.Client.defaultManagerSettings server $ do
     getScore :: Bloodhound.Hit a -> Double
     getScore hit = Maybe.fromMaybe 0.0 (Bloodhound.hitScore hit)
     getTitle :: Bloodhound.Hit Aeson.Object -> String
-    getTitle hit = case Bloodhound.hitSource hit of
-      Nothing -> ""
-      Just x ->
-        case HashMap.Lazy.lookup "title" x of
-          Just (Aeson.String t) -> Text.unpack t
-          _                     -> ""
+    getTitle hit
+      | Just source <- Bloodhound.hitSource hit
+      , Just (Aeson.String text) <- HashMap.Lazy.lookup "title" source
+      = Text.unpack text
+    getTitle _ = ""
     printHit :: (Int, Bloodhound.Hit Aeson.Object) -> IO ()
     printHit (num, hit) = Printf.printf "%d\t%0.6f\t\t%s\n" num (getScore hit) (getTitle hit)
 
