@@ -1,8 +1,14 @@
 name: relevant
 version: 0.1.0.0
 dependencies:
+- aeson
 - base
 - bloodhound
+- bytestring
+- text
+- unordered-containers
+ghc-options:
+- -Wall
 executables:
   relevant:
     source-dirs: src
