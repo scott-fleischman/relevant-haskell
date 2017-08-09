@@ -7,13 +7,32 @@ import qualified Control.Monad.IO.Class as Monad.IO
 import qualified Data.Aeson             as Aeson
 import qualified Data.ByteString.Lazy   as ByteString.Lazy
 import qualified Data.HashMap.Lazy      as HashMap.Lazy
+import qualified Data.Maybe             as Maybe
 import qualified Data.Text              as Text
 import qualified Data.Vector            as Vector
 import qualified Database.V5.Bloodhound as Bloodhound
 import qualified Network.HTTP.Client    as HTTP.Client
+import qualified Text.Printf            as Printf
 
 main :: IO ()
-main = extract >>= reindex
+main = search yourFirstSearch
+
+-- Listing 3.6
+yourFirstSearch :: Bloodhound.Search
+yourFirstSearch =
+  let
+    usersSearch = Bloodhound.QueryString "basketball with cartoon aliens"
+    fields =
+      [ Bloodhound.FieldName "title^10"
+      , Bloodhound.FieldName "overview"
+      ]
+    multiMatch = Bloodhound.mkMultiMatchQuery fields usersSearch
+    query = Just $ Bloodhound.QueryMultiMatchQuery multiMatch
+    searchFilter = Nothing
+  in Bloodhound.mkSearch query searchFilter
+
+extractReindex :: IO ()
+extractReindex = extract >>= reindex
 
 extract :: IO Aeson.Object
 extract = do
@@ -56,16 +75,11 @@ search query = Bloodhound.withBH HTTP.Client.defaultManagerSettings server $ do
 
   Monad.IO.liftIO $ putStrLn "Num\tRelevance Score\t\tMovie Title"
   let
-    showMaybe :: Show a => Maybe a -> String
-    showMaybe Nothing  = ""
-    showMaybe (Just x) = show x
-
     printHit :: (Int, Bloodhound.Hit Aeson.Object) -> Bloodhound.BH IO ()
-    printHit (num, hit) = Monad.IO.liftIO . putStrLn
-      $ show num
-      ++ "\t" ++ (showMaybe . Bloodhound.hitScore) hit
-      ++ "\t" ++ title
+    printHit (num, hit) = Monad.IO.liftIO $ Printf.printf "%d\t%0.6f\t\t%s\n" num score title
       where
+      score :: Double
+      score = Maybe.fromMaybe 0.0 (Bloodhound.hitScore hit)
       title :: String
       title = case Bloodhound.hitSource hit of
         Nothing -> ""
