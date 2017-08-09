@@ -11,11 +11,17 @@ import qualified Data.Maybe             as Maybe
 import qualified Data.Text              as Text
 import qualified Data.Vector            as Vector
 import qualified Database.V5.Bloodhound as Bloodhound
+import qualified Extra
 import qualified Network.HTTP.Client    as HTTP.Client
+import qualified Network.HTTP.Simple    as HTTP.Simple
 import qualified Text.Printf            as Printf
 
 main :: IO ()
-main = search yourFirstSearch
+main = do
+  -- extractReindex
+  -- search yourFirstSearch
+  explainSearch yourFirstSearch
+  return ()
 
 -- Listing 3.6
 yourFirstSearch :: Bloodhound.Search
@@ -65,6 +71,7 @@ reindex tmdb = Bloodhound.withBH HTTP.Client.defaultManagerSettings server $ do
 search :: Bloodhound.Search -> IO ()
 search query = Bloodhound.withBH HTTP.Client.defaultManagerSettings server $ do
   Monad.IO.liftIO $ putStrLn "Running query..."
+
   response <- Bloodhound.searchByType tmdbIndex movieMapping query
   let
     bytes = HTTP.Client.responseBody response
@@ -76,6 +83,17 @@ search query = Bloodhound.withBH HTTP.Client.defaultManagerSettings server $ do
   Monad.IO.liftIO $ printHits hits
 
   return ()
+
+makeSimpleQuery :: Bloodhound.Query -> Aeson.Value
+makeSimpleQuery query = Aeson.object [("query", Aeson.toJSON query)]
+
+explainSearch :: Bloodhound.Search -> IO ()
+explainSearch searchValue = do
+  let
+    query = Maybe.fromMaybe Aeson.Null . fmap makeSimpleQuery $ Bloodhound.queryBody searchValue
+    request = HTTP.Simple.setRequestBodyJSON query "POST http://localhost:9200/tmdb/movie/_validate/query?explain"
+  response :: HTTP.Simple.Response Aeson.Value <- HTTP.Simple.httpJSON request
+  Extra.pPrintResponse response
 
 printHits :: [Bloodhound.Hit Aeson.Object] -> IO ()
 printHits hits = do

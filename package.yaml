@@ -6,6 +6,8 @@ dependencies:
 - bloodhound
 - bytestring
 - http-client
+- http-conduit
+- pretty-simple
 - text
 - unordered-containers
 - vector
