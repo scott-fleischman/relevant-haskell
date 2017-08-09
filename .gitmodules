@@ -1,0 +1,3 @@
+[submodule "relevant-search-book"]
+	path = relevant-search-book
+	url = git@github.com:o19s/relevant-search-book.git
