@@ -13,10 +13,10 @@ import qualified Database.V5.Bloodhound as Bloodhound
 import qualified Network.HTTP.Client    as HTTP.Client
 
 main :: IO ()
-main = reindex
+main = extract >>= reindex
 
-reindex :: IO ()
-reindex = do
+extract :: IO Aeson.Object
+extract = do
   putStrLn $ "Loading " ++ tmdbPath
   bytes <- ByteString.Lazy.readFile tmdbPath
   tmdb :: HashMap.Lazy.HashMap Text.Text Aeson.Value <-
@@ -24,7 +24,10 @@ reindex = do
       Left err -> fail err
       Right x  -> return x
   putStrLn $ (show . HashMap.Lazy.size) tmdb ++ " movies loaded"
+  return tmdb
 
+reindex :: Aeson.Object -> IO ()
+reindex tmdb = do
   let
     server = Bloodhound.Server "http://localhost:9200"
     tmdbIndex = Bloodhound.IndexName "tmdb"
