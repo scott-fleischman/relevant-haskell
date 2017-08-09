@@ -3,7 +3,7 @@
 
 module Main where
 
-import qualified Control.Monad.IO.Class as IO.Class
+import qualified Control.Monad.IO.Class as Monad.IO
 import qualified Data.Aeson             as Aeson
 import qualified Data.ByteString.Lazy   as ByteString.Lazy
 import qualified Data.HashMap.Strict    as HashMap.Strict
@@ -28,10 +28,10 @@ main = do
     server = Bloodhound.Server "http://localhost:9200"
     tmdbIndex = Bloodhound.IndexName "tmdb"
   Bloodhound.withBH HTTP.Client.defaultManagerSettings server $ do
-    IO.Class.liftIO $ putStrLn "Deleting index"
+    Monad.IO.liftIO $ putStrLn "Deleting index"
     _ <- Bloodhound.deleteIndex tmdbIndex
 
-    IO.Class.liftIO $ putStrLn "Creating index"
+    Monad.IO.liftIO $ putStrLn "Creating index"
     let indexSettings = Bloodhound.IndexSettings (Bloodhound.ShardCount 1) (Bloodhound.ReplicaCount 0)
     _ <- Bloodhound.createIndex indexSettings tmdbIndex
 
