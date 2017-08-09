@@ -5,6 +5,7 @@ dependencies:
 - base
 - bloodhound
 - bytestring
+- http-client
 - text
 - unordered-containers
 ghc-options:
