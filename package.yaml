@@ -1,0 +1,9 @@
+name: relevant
+version: 0.1.0.0
+dependencies:
+- base
+- bloodhound
+executables:
+  relevant:
+    source-dirs: src
+    main: Main.hs

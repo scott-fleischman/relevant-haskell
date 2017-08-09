@@ -1,0 +1,8 @@
+resolver: nightly-2017-08-08
+packages:
+- .
+extra-deps:
+- bloodhound-0.14.0.0
+- time-1.6.0.1
+flags: {}
+extra-package-dbs: []
