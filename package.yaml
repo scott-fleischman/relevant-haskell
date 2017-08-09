@@ -8,6 +8,7 @@ dependencies:
 - http-client
 - text
 - unordered-containers
+- vector
 ghc-options:
 - -Wall
 executables:
