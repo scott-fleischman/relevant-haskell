@@ -73,7 +73,13 @@ search query = Bloodhound.withBH HTTP.Client.defaultManagerSettings server $ do
     Right x  -> return (x :: Bloodhound.SearchResult Aeson.Object)
   let hits = Bloodhound.hits . Bloodhound.searchHits $ searchResult
 
-  Monad.IO.liftIO $ putStrLn "Num\tRelevance Score\t\tMovie Title"
+  Monad.IO.liftIO $ printHits hits
+
+  return ()
+
+printHits :: [Bloodhound.Hit Aeson.Object] -> IO ()
+printHits hits = do
+  putStrLn "Num\tRelevance Score\t\tMovie Title"
   let
     getScore :: Bloodhound.Hit a -> Double
     getScore hit = Maybe.fromMaybe 0.0 (Bloodhound.hitScore hit)
@@ -85,10 +91,7 @@ search query = Bloodhound.withBH HTTP.Client.defaultManagerSettings server $ do
     getTitle _ = ""
     printHit :: (Int, Bloodhound.Hit Aeson.Object) -> IO ()
     printHit (num, hit) = Printf.printf "%d\t%0.6f\t\t%s\n" num (getScore hit) (getTitle hit)
-
-  Monad.IO.liftIO $ mapM_ printHit $ zip [1..] hits
-
-  return ()
+  mapM_ printHit $ zip [1..] hits
 
 server :: Bloodhound.Server
 server = Bloodhound.Server "http://localhost:9200"
