@@ -1,0 +1,34 @@
+sudo: required
+language: generic
+services:
+- docker
+cache:
+  directories:
+  - $HOME/.stack
+addons:
+  apt:
+    packages:
+      - libgmp-dev
+
+before_install:
+# get stack
+- mkdir -p ~/.local/bin
+- export PATH=$HOME/.local/bin:$PATH
+- travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
+
+# get elastic
+- docker pull docker.elastic.co/elasticsearch/elasticsearch:5.5.1
+
+install:
+# build dependencies
+- stack --no-terminal --install-ghc build -j2 --only-dependencies
+
+script:
+# build code
+- stack --no-terminal build -j2 --pedantic
+
+# start elastic
+- docker run -p 9200:9200 -e "http.host=0.0.0.0" -e "transport.host=127.0.0.1" docker.elastic.co/elasticsearch/elasticsearch:5.5.1
+
+# run
+- stack --no-terminal exec relevant
