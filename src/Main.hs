@@ -1,14 +1,17 @@
 {-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE QuasiQuotes         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Main where
 
 import qualified Control.Monad.IO.Class as Monad.IO
 import qualified Data.Aeson             as Aeson
+import qualified Data.Aeson.QQ          as Aeson.QQ
 import qualified Data.ByteString.Lazy   as ByteString.Lazy
 import qualified Data.HashMap.Lazy      as HashMap.Lazy
 import qualified Data.Maybe             as Maybe
 import qualified Data.Text              as Text
+import qualified Data.Text.Encoding     as Text.Encoding
 import qualified Data.Vector            as Vector
 import qualified Database.V5.Bloodhound as Bloodhound
 import qualified Extra
@@ -21,7 +24,24 @@ main = do
   -- extractReindex
   -- search yourFirstSearch
   explainSearch yourFirstSearch
+  -- printAnalysis "Fire with Fire"
   return ()
+
+movieMapping :: Aeson.Value
+movieMapping = [Aeson.QQ.aesonQQ|
+{
+  "properties": {
+    "title": {
+      "type": "string",
+      "analyzer": "english"
+    },
+    "overview": {
+      "type": "string",
+      "analyzer": "english"
+    }
+  }
+}
+  |]
 
 -- Listing 3.6
 yourFirstSearch :: Bloodhound.Search
@@ -35,7 +55,8 @@ yourFirstSearch =
     multiMatch = Bloodhound.mkMultiMatchQuery fields usersSearch
     query = Just $ Bloodhound.QueryMultiMatchQuery multiMatch
     searchFilter = Nothing
-  in Bloodhound.mkSearch query searchFilter
+    baseSearch = Bloodhound.mkSearch query searchFilter
+  in baseSearch { Bloodhound.size = Bloodhound.Size 11 }
 
 extractReindex :: IO ()
 extractReindex = extract >>= reindex
@@ -54,17 +75,24 @@ extract = do
 reindex :: Aeson.Object -> IO ()
 reindex tmdb = Bloodhound.withBH HTTP.Client.defaultManagerSettings server $ do
   Monad.IO.liftIO $ putStrLn "Deleting index..."
-  _ <- Bloodhound.deleteIndex tmdbIndex
+  _ <- Bloodhound.deleteIndex tmdbIndexName
 
   Monad.IO.liftIO $ putStrLn "Creating index..."
   let indexSettings = Bloodhound.IndexSettings (Bloodhound.ShardCount 1) (Bloodhound.ReplicaCount 0)
-  _ <- Bloodhound.createIndex indexSettings tmdbIndex
+  _ <- Bloodhound.createIndex indexSettings tmdbIndexName
+
+  -- comment out to use default mapping
+  Monad.IO.liftIO $ putStrLn "Setting mapping..."
+  _ <- Bloodhound.putMapping tmdbIndexName movieMappingName movieMapping
 
   Monad.IO.liftIO $ putStrLn "Bulk indexing documents..."
   let
-    makeOperation (movieId, movie) = Bloodhound.BulkIndex tmdbIndex movieMapping (Bloodhound.DocId movieId) movie
+    makeOperation (movieId, movie) = Bloodhound.BulkIndex tmdbIndexName movieMappingName (Bloodhound.DocId movieId) movie
     operations = Vector.fromList . fmap makeOperation . HashMap.Lazy.toList $ tmdb
   _ <- Bloodhound.bulk operations
+
+  Monad.IO.liftIO $ putStrLn "Refreshing index..."
+  _ <- Bloodhound.refreshIndex tmdbIndexName
 
   return ()
 
@@ -72,7 +100,7 @@ search :: Bloodhound.Search -> IO ()
 search query = Bloodhound.withBH HTTP.Client.defaultManagerSettings server $ do
   Monad.IO.liftIO $ putStrLn "Running query..."
 
-  response <- Bloodhound.searchByType tmdbIndex movieMapping query
+  response <- Bloodhound.searchByType tmdbIndexName movieMappingName query
   let
     bytes = HTTP.Client.responseBody response
   searchResult <- case Aeson.eitherDecode bytes of
@@ -95,6 +123,18 @@ explainSearch searchValue = do
       = HTTP.Simple.setRequestBodyJSON query
       . HTTP.Simple.setRequestQueryString [("explain", Nothing)]
       . HTTP.Simple.setRequestPath "/tmdb/movie/_validate/query"
+      $ baseRequest
+
+  response :: HTTP.Simple.Response Aeson.Value <- HTTP.Simple.httpJSON request
+  Extra.pPrintResponse response
+
+printAnalysis :: Text.Text -> IO ()
+printAnalysis text = do
+  let
+    request
+      = HTTP.Simple.setRequestBody (HTTP.Client.RequestBodyBS . Text.Encoding.encodeUtf8 $ text)
+      . HTTP.Simple.setRequestQueryString [("analyzer", Just "standard")]
+      . HTTP.Simple.setRequestPath "/tmdb/_analyze"
       $ baseRequest
 
   response :: HTTP.Simple.Response Aeson.Value <- HTTP.Simple.httpJSON request
@@ -126,11 +166,11 @@ printHits hits = do
 server :: Bloodhound.Server
 server = Bloodhound.Server "http://localhost:9200"
 
-tmdbIndex :: Bloodhound.IndexName
-tmdbIndex = Bloodhound.IndexName "tmdb"
+tmdbIndexName :: Bloodhound.IndexName
+tmdbIndexName = Bloodhound.IndexName "tmdb"
 
-movieMapping :: Bloodhound.MappingName
-movieMapping = Bloodhound.MappingName "movie"
+movieMappingName :: Bloodhound.MappingName
+movieMappingName = Bloodhound.MappingName "movie"
 
 tmdbPath :: FilePath
 tmdbPath = "relevant-search-book/ipython/tmdb.json"
