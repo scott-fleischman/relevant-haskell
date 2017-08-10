@@ -8,6 +8,8 @@ dependencies:
 - bytestring
 - http-client
 - http-conduit
+- lens
+- lens-aeson
 - pretty-simple
 - text
 - unordered-containers

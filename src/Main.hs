@@ -4,8 +4,11 @@
 
 module Main where
 
+import           Control.Lens           ((^?))
+import qualified Control.Lens           as Lens
 import qualified Control.Monad.IO.Class as Monad.IO
 import qualified Data.Aeson             as Aeson
+import qualified Data.Aeson.Lens        as Aeson.Lens
 import qualified Data.Aeson.QQ          as Aeson.QQ
 import qualified Data.ByteString.Lazy   as ByteString.Lazy
 import qualified Data.HashMap.Lazy      as HashMap.Lazy
@@ -22,9 +25,11 @@ import qualified Text.Printf            as Printf
 main :: IO ()
 main = do
   -- extractReindex
-  -- search yourFirstSearch
-  explainSearch yourFirstSearch
+  -- let searchValue = queryToSearch yourFirstSearch
+  -- search searchValue
+  -- explainSearch searchValue
   -- printAnalysis "Fire with Fire"
+  explainRelevanceScoring yourFirstSearch
   return ()
 
 movieMapping :: Aeson.Value
@@ -44,7 +49,7 @@ movieMapping = [Aeson.QQ.aesonQQ|
   |]
 
 -- Listing 3.6
-yourFirstSearch :: Bloodhound.Search
+yourFirstSearch :: Bloodhound.Query
 yourFirstSearch =
   let
     usersSearch = Bloodhound.QueryString "basketball with cartoon aliens"
@@ -53,10 +58,15 @@ yourFirstSearch =
       , Bloodhound.FieldName "overview"
       ]
     multiMatch = Bloodhound.mkMultiMatchQuery fields usersSearch
-    query = Just $ Bloodhound.QueryMultiMatchQuery multiMatch
+  in Bloodhound.QueryMultiMatchQuery multiMatch
+
+queryToSearch :: Bloodhound.Query -> Bloodhound.Search
+queryToSearch query =
+  let
     searchFilter = Nothing
-    baseSearch = Bloodhound.mkSearch query searchFilter
-  in baseSearch { Bloodhound.size = Bloodhound.Size 11 }
+    resultSize = Bloodhound.Size 11
+    baseSearch = Bloodhound.mkSearch (Just query) searchFilter
+  in baseSearch { Bloodhound.size = resultSize }
 
 extractReindex :: IO ()
 extractReindex = extract >>= reindex
@@ -127,6 +137,42 @@ explainSearch searchValue = do
 
   response :: HTTP.Simple.Response Aeson.Value <- HTTP.Simple.httpJSON request
   Extra.pPrintResponse response
+
+explainRelevanceScoring :: Bloodhound.Query -> IO ()
+explainRelevanceScoring query = do
+  let
+    body = [Aeson.QQ.aesonQQ|
+{
+  "explain": true,
+  "query": #{query}
+}
+    |]
+
+    request
+      = HTTP.Simple.setRequestBody (HTTP.Client.RequestBodyBS . ByteString.Lazy.toStrict . Aeson.encode $ body)
+      . HTTP.Simple.setRequestPath "/tmdb/movie/_search"
+      $ baseRequest
+
+  response :: HTTP.Simple.Response Aeson.Value <- HTTP.Simple.httpJSON request
+
+  let result = HTTP.Client.responseBody response
+  Printf.printf "Explain for %s\n" . Maybe.fromMaybe "" $
+    result
+      ^? Aeson.Lens.key "hits"
+      . Aeson.Lens.key "hits"
+      . Aeson.Lens._Array
+      . Lens.ix 0
+      . Aeson.Lens.key "_source"
+      . Aeson.Lens.key "title"
+      . Aeson.Lens._String
+
+  Extra.pPrintJSON . Maybe.fromMaybe (Aeson.object []) $
+    result
+      ^? Aeson.Lens.key "hits"
+      . Aeson.Lens.key "hits"
+      . Aeson.Lens._Array
+      . Lens.ix 0
+      . Aeson.Lens.key "_explanation"
 
 printAnalysis :: Text.Text -> IO ()
 printAnalysis text = do
