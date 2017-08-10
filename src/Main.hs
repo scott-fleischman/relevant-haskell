@@ -24,12 +24,12 @@ import qualified Text.Printf            as Printf
 
 main :: IO ()
 main = do
-  extractReindex
+  -- extractReindex
   let searchValue = queryToSearch yourFirstSearch
   search searchValue
-  explainSearch searchValue
-  printAnalysis "Fire with Fire"
-  explainRelevanceScoring yourFirstSearch
+  -- explainSearch searchValue
+  -- printAnalysis "Fire with Fire"
+  -- explainRelevanceScoring yourFirstSearch
   return ()
 
 movieMapping :: Aeson.Value
@@ -53,8 +53,12 @@ yourFirstSearch :: Bloodhound.Query
 yourFirstSearch =
   let
     usersSearch = Bloodhound.QueryString "basketball with cartoon aliens"
+
+    -- titleField = "title^10" -- Section
+    titleField = "title^0.1" -- Listing 3.14
+
     fields =
-      [ Bloodhound.FieldName "title^10"
+      [ Bloodhound.FieldName titleField
       , Bloodhound.FieldName "overview"
       ]
     multiMatch = Bloodhound.mkMultiMatchQuery fields usersSearch
@@ -71,6 +75,7 @@ queryToSearch query =
 extractReindex :: IO ()
 extractReindex = extract >>= reindex
 
+-- Listing 3.1
 extract :: IO Aeson.Object
 extract = do
   putStrLn $ "Loading " ++ tmdbPath
@@ -82,6 +87,7 @@ extract = do
   putStrLn $ (show . HashMap.Lazy.size) tmdb ++ " movies loaded"
   return tmdb
 
+-- Listing 3.3
 reindex :: Aeson.Object -> IO ()
 reindex tmdb = Bloodhound.withBH HTTP.Client.defaultManagerSettings server $ do
   Monad.IO.liftIO $ putStrLn "Deleting index..."
@@ -91,8 +97,9 @@ reindex tmdb = Bloodhound.withBH HTTP.Client.defaultManagerSettings server $ do
   let indexSettings = Bloodhound.IndexSettings (Bloodhound.ShardCount 1) (Bloodhound.ReplicaCount 0)
   _ <- Bloodhound.createIndex indexSettings tmdbIndexName
 
-  -- comment out to use default mapping
   Monad.IO.liftIO $ putStrLn "Setting mapping..."
+  -- comment out to use default mapping (as in Listing 3.3)
+  -- added in Listing 3.11
   _ <- Bloodhound.putMapping tmdbIndexName movieMappingName movieMapping
 
   Monad.IO.liftIO $ putStrLn "Bulk indexing documents..."
@@ -106,6 +113,7 @@ reindex tmdb = Bloodhound.withBH HTTP.Client.defaultManagerSettings server $ do
 
   return ()
 
+-- Listing 3.5
 search :: Bloodhound.Search -> IO ()
 search query = Bloodhound.withBH HTTP.Client.defaultManagerSettings server $ do
   Monad.IO.liftIO $ putStrLn "Running query..."
@@ -125,6 +133,7 @@ search query = Bloodhound.withBH HTTP.Client.defaultManagerSettings server $ do
 makeSimpleQuery :: Bloodhound.Query -> Aeson.Value
 makeSimpleQuery query = Aeson.object [("query", Aeson.toJSON query)]
 
+-- Listing 3.7
 explainSearch :: Bloodhound.Search -> IO ()
 explainSearch searchValue = do
   let
@@ -138,6 +147,7 @@ explainSearch searchValue = do
   response :: HTTP.Simple.Response Aeson.Value <- HTTP.Simple.httpJSON request
   Extra.pPrintResponse response
 
+-- Listing 3.12
 explainRelevanceScoring :: Bloodhound.Query -> IO ()
 explainRelevanceScoring query = do
   let
@@ -174,6 +184,7 @@ explainRelevanceScoring query = do
       . Lens.ix 0
       . Aeson.Lens.key "_explanation"
 
+-- Listing 3.8
 printAnalysis :: Text.Text -> IO ()
 printAnalysis text = do
   let
