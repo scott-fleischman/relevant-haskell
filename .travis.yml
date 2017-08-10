@@ -33,12 +33,10 @@ install:
 - stack --no-terminal build alex happy -j2
 - stack --no-terminal build -j2 --only-dependencies
 
-script:
-# build code
-- stack --no-terminal build -j2 --pedantic
-
+before_script:
 # start elastic
-- docker run -p 9200:9200 -e "http.host=0.0.0.0" -e "transport.host=127.0.0.1" docker.elastic.co/elasticsearch/elasticsearch:5.5.1 &
+- docker run -p 9200:9200 docker.elastic.co/elasticsearch/elasticsearch:5.5.1 &
 
-# run
+script:
+- stack --no-terminal build -j2 --pedantic
 - stack --no-terminal exec relevant
