@@ -90,10 +90,22 @@ makeSimpleQuery query = Aeson.object [("query", Aeson.toJSON query)]
 explainSearch :: Bloodhound.Search -> IO ()
 explainSearch searchValue = do
   let
-    query = Maybe.fromMaybe Aeson.Null . fmap makeSimpleQuery $ Bloodhound.queryBody searchValue
-    request = HTTP.Simple.setRequestBodyJSON query "POST http://localhost:9200/tmdb/movie/_validate/query?explain"
+    query = maybe Aeson.Null makeSimpleQuery $ Bloodhound.queryBody searchValue
+    request
+      = HTTP.Simple.setRequestBodyJSON query
+      . HTTP.Simple.setRequestQueryString [("explain", Nothing)]
+      . HTTP.Simple.setRequestPath "/tmdb/movie/_validate/query"
+      $ baseRequest
+
   response :: HTTP.Simple.Response Aeson.Value <- HTTP.Simple.httpJSON request
   Extra.pPrintResponse response
+
+baseRequest :: HTTP.Simple.Request
+baseRequest
+  = HTTP.Simple.setRequestMethod "GET"
+  . HTTP.Simple.setRequestPort 9200
+  . HTTP.Simple.setRequestHost "localhost"
+  $ HTTP.Simple.defaultRequest
 
 printHits :: [Bloodhound.Hit Aeson.Object] -> IO ()
 printHits hits = do
