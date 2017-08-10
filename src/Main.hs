@@ -24,12 +24,12 @@ import qualified Text.Printf            as Printf
 
 main :: IO ()
 main = do
-  -- extractReindex
+  extractReindex
   let searchValue = queryToSearch yourFirstSearch
   search searchValue
-  -- explainSearch searchValue
-  -- printAnalysis "Fire with Fire"
-  -- explainRelevanceScoring yourFirstSearch
+  explainSearch searchValue
+  printAnalysis "Fire with Fire"
+  explainRelevanceScoring yourFirstSearch
   return ()
 
 movieMapping :: Aeson.Value
