@@ -29,7 +29,9 @@ before_install:
 
 install:
 # build dependencies
-- stack --no-terminal --install-ghc build -j2 --only-dependencies
+- stack --no-terminal setup
+- stack --no-terminal build alex happy -j2
+- stack --no-terminal build -j2 --only-dependencies
 
 script:
 # build code
