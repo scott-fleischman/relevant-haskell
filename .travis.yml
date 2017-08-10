@@ -10,7 +10,15 @@ addons:
     packages:
       - libgmp-dev
 
+git:
+# Handle git submodules manually
+  submodules: false
+
 before_install:
+# Use sed to replace the SSH URL with the public URL, then initialize submodules
+- sed -i 's/git@github.com:/https:\/\/github.com\//' .gitmodules
+- git submodule update --init --recursive
+
 # get stack
 - mkdir -p ~/.local/bin
 - export PATH=$HOME/.local/bin:$PATH
