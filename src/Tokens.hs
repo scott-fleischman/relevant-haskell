@@ -34,6 +34,8 @@ runAll = do
     testPhoneticAnalyzerDalaiLama
     testPhoneticAnalyzerTallLlama
 
+  createMyLibraryData
+
   Monad.when False $ do
     createAcronymAnalyzer
     testAcronymAnalyzer
@@ -162,6 +164,22 @@ testPhoneticAnalyzerTallLlama = testAnalyzer "my_library"
   [ ("analyzer", Just "phonetic")
   , ("text", Just "message from tall llama")
   ]
+
+
+createMyLibraryData :: IO ()
+createMyLibraryData = do
+  Common.deleteIndex "my_library"
+  Common.createIndex "my_library" [Aeson.QQ.aesonQQ|
+{
+  "settings": {
+    "number_of_shards": 1
+  }
+}
+    |]
+
+  Common.indexDocument "my_library" "example" "1" [Aeson.QQ.aesonQQ| { "title":"apple apple apple apple apple"} |]
+  Common.indexDocument "my_library" "example" "2" [Aeson.QQ.aesonQQ| { "title":"apple apple apple banana banana"} |]
+  Common.indexDocument "my_library" "example" "3" [Aeson.QQ.aesonQQ| { "title":"apple banana blueberry coconut"} |]
 
 -- Section 4.1.1 Acronyms
 createAcronymAnalyzer :: IO ()

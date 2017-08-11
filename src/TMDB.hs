@@ -158,13 +158,10 @@ explainRelevanceScoring query = do
   "query": #{query}
 }
     |]
-
-    request
-      = HTTP.Simple.setRequestBodyJSON body
-      . HTTP.Simple.setRequestPath "/tmdb/movie/_search"
-      $ Common.baseRequest
-
-  response :: HTTP.Simple.Response Aeson.Value <- HTTP.Simple.httpJSON request
+  response <- Common.sendRequest
+    . HTTP.Simple.setRequestBodyJSON body
+    . HTTP.Simple.setRequestPath "/tmdb/movie/_search"
+    $ Common.baseRequest
 
   let result = HTTP.Client.responseBody response
   Printf.printf "Explain for %s\n" . Maybe.fromMaybe "" $
@@ -187,16 +184,12 @@ explainRelevanceScoring query = do
 
 -- Listing 3.8
 printAnalysis :: Text.Text -> IO ()
-printAnalysis text = do
-  let
-    request
-      = HTTP.Simple.setRequestBody (HTTP.Client.RequestBodyBS . Text.Encoding.encodeUtf8 $ text)
-      . HTTP.Simple.setRequestQueryString [("analyzer", Just "standard")]
-      . HTTP.Simple.setRequestPath "/tmdb/_analyze"
-      $ Common.baseRequest
-
-  response :: HTTP.Simple.Response Aeson.Value <- HTTP.Simple.httpJSON request
-  Common.pPrintResponse response
+printAnalysis text
+  = Common.sendRequest_
+  . HTTP.Simple.setRequestBody (HTTP.Client.RequestBodyBS . Text.Encoding.encodeUtf8 $ text)
+  . HTTP.Simple.setRequestQueryString [("analyzer", Just "standard")]
+  . HTTP.Simple.setRequestPath "/tmdb/_analyze"
+  $ Common.baseRequest
 
 printHits :: [Bloodhound.Hit Aeson.Object] -> IO ()
 printHits hits = do
