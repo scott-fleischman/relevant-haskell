@@ -234,7 +234,7 @@ tmdbPath :: FilePath
 tmdbPath = "relevant-search-book/ipython/tmdb.json"
 
 host :: Text.Text
-host = "localhost"
+host = "127.0.0.1"
 
 port :: Int
 port = 9200
