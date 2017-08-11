@@ -1,9 +1,11 @@
 {-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE QuasiQuotes         #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Common where
 
 import qualified Data.Aeson           as Aeson
+import qualified Data.Aeson.QQ        as Aeson.QQ
 import qualified Data.ByteString.Lazy as ByteString.Lazy
 import           Data.Semigroup       ((<>))
 import qualified Data.Text            as Text
@@ -81,6 +83,13 @@ deleteIndex name
   . HTTP.Simple.setRequestPath (Text.Encoding.encodeUtf8 ("/" <> name))
   $ baseRequest
 
+refreshIndex :: Text.Text -> IO ()
+refreshIndex name
+  = sendRequest_
+  . HTTP.Simple.setRequestMethod "POST"
+  . HTTP.Simple.setRequestPath (Text.Encoding.encodeUtf8 ("/" <> name <> "/_refresh"))
+  $ baseRequest
+
 indexDocument :: Aeson.ToJSON a => Text.Text -> Text.Text -> Text.Text -> a -> IO ()
 indexDocument indexName typeName documentId document
   = sendRequest_
@@ -91,11 +100,13 @@ indexDocument indexName typeName documentId document
 
 analyzeText :: Text.Text -> Text.Text -> Text.Text -> IO ()
 analyzeText indexName analyzerName text
-  = sendRequest_
-  . HTTP.Simple.setRequestQueryString
-    [ ("analyzer", (Just . Text.Encoding.encodeUtf8) analyzerName)
-    , ("text", (Just . Text.Encoding.encodeUtf8) text)
-    ]
+  =  sendRequest_
+  . HTTP.Simple.setRequestBodyJSON [Aeson.QQ.aesonQQ|
+{
+  "analyzer": #{analyzerName},
+  "text": #{text}
+}
+    |]
   . HTTP.Simple.setRequestPath (Text.Encoding.encodeUtf8 ("/" <> indexName <> "/_analyze"))
   $ Common.baseRequest
 

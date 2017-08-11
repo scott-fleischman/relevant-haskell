@@ -17,19 +17,13 @@ import qualified Network.HTTP.Simple as HTTP.Simple
 runAll :: IO ()
 runAll = do
   standardCloneAnalyzer
+  englishCloneAnalyzer
+
+  -- this requires the analysis-phonetic plugin
+  -- https://www.elastic.co/guide/en/elasticsearch/plugins/current/analysis-phonetic.html
+  phoneticAnalyzer
 
   Monad.when False $ do
-    createEnglishCloneAnalyzer
-    testEnglishCloneAnalyzerFlower
-    testEnglishCloneAnalyzerSilly
-
-  Monad.when False $ do
-    -- this requires the analysis-phonetic plugin
-    -- https://www.elastic.co/guide/en/elasticsearch/plugins/current/analysis-phonetic.html
-    createPhoneticAnalyzer
-    testPhoneticAnalyzerDalaiLama
-    testPhoneticAnalyzerTallLlama
-
     createMyLibraryData
 
   Monad.when False $ do
@@ -44,11 +38,11 @@ runAll = do
 -- Listing 4.1 Recreating the standard analyzer
 standardCloneAnalyzer :: IO ()
 standardCloneAnalyzer = do
-  Common.printHeader "standard_clone analyzer"
   let
     indexName = "my_library"
     analyzerName = "standard_clone"
     analyzerNameString = Text.unpack analyzerName
+  Common.printHeader $ analyzerName <> " analyzer"
   Common.deleteIndex indexName
   Common.createIndex indexName [Aeson.QQ.aesonQQ|
 {
@@ -71,8 +65,15 @@ standardCloneAnalyzer = do
   Common.analyzeText indexName analyzerName "Dr. Strangelove: Or How I Learned to Stop Worrying and Love the Bomb"
 
 -- Listing 4.2 Recreating the English analyzer
-createEnglishCloneAnalyzer :: IO ()
-createEnglishCloneAnalyzer = createAnalyzer "my_library" [Aeson.QQ.aesonQQ|
+englishCloneAnalyzer :: IO ()
+englishCloneAnalyzer = do
+  let
+    indexName = "my_library"
+    analyzerName = "english_clone"
+    analyzerNameString = Text.unpack analyzerName
+  Common.printHeader $ analyzerName <> " analyzer"
+  Common.deleteIndex indexName
+  Common.createIndex "my_library" [Aeson.QQ.aesonQQ|
 {
   "settings": {
     "analysis": {
@@ -83,7 +84,7 @@ createEnglishCloneAnalyzer = createAnalyzer "my_library" [Aeson.QQ.aesonQQ|
         },
         "english_keywords": {
           "type": "keyword_marker",
-          "keywords": []
+          "keywords": ["skies"]
         },
         "english_stemmer": {
           "type": "stemmer",
@@ -95,7 +96,7 @@ createEnglishCloneAnalyzer = createAnalyzer "my_library" [Aeson.QQ.aesonQQ|
         }
       },
       "analyzer": {
-        "english_clone": {
+        $analyzerNameString: {
           "tokenizer": "standard",
           "filter": [
             "english_possessive_stemmer",
@@ -111,26 +112,24 @@ createEnglishCloneAnalyzer = createAnalyzer "my_library" [Aeson.QQ.aesonQQ|
 }
   |]
 
-testEnglishCloneAnalyzerFlower :: IO ()
-testEnglishCloneAnalyzerFlower = testAnalyzer "my_library"
-  [ ("analyzer", Just "english_clone")
-  , ("text", Just "flower flowers flowering flowered flower")
-  ]
-
-testEnglishCloneAnalyzerSilly :: IO ()
-testEnglishCloneAnalyzerSilly = testAnalyzer "my_library"
-  [ ("analyzer", Just "english_clone")
-  , ("text", Just "silly silliness sillied sillying")
-  ]
+  Common.analyzeText indexName analyzerName "flower flowers flowering flowered flower"
+  Common.analyzeText indexName analyzerName "silly silliness sillied sillying"
 
 -- Listing 4.4
-createPhoneticAnalyzer :: IO ()
-createPhoneticAnalyzer = createAnalyzer "my_library" [Aeson.QQ.aesonQQ|
+phoneticAnalyzer :: IO ()
+phoneticAnalyzer = do
+  let
+    indexName = "my_library"
+    analyzerName = "phonetic"
+    analyzerNameString = Text.unpack analyzerName
+  Common.printHeader $ analyzerName <> " analyzer"
+  Common.deleteIndex indexName
+  Common.createIndex indexName [Aeson.QQ.aesonQQ|
 {
   "settings": {
     "analysis": {
       "analyzer": {
-        "phonetic": {
+        $analyzerNameString: {
           "tokenizer": "standard",
           "filter": [
             "standard",
@@ -151,17 +150,8 @@ createPhoneticAnalyzer = createAnalyzer "my_library" [Aeson.QQ.aesonQQ|
 }
   |]
 
-testPhoneticAnalyzerDalaiLama :: IO ()
-testPhoneticAnalyzerDalaiLama = testAnalyzer "my_library"
-  [ ("analyzer", Just "phonetic")
-  , ("text", Just "message from Dalai Lama")
-  ]
-
-testPhoneticAnalyzerTallLlama :: IO ()
-testPhoneticAnalyzerTallLlama = testAnalyzer "my_library"
-  [ ("analyzer", Just "phonetic")
-  , ("text", Just "message from tall llama")
-  ]
+  Common.analyzeText indexName analyzerName "message from Dalai Lama"
+  Common.analyzeText indexName analyzerName "message from tall llama"
 
 
 createMyLibraryData :: IO ()
