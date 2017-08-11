@@ -6,6 +6,5 @@ import qualified Tokens
 main :: IO ()
 main = do
   TMDB.runAll
-  Tokens.createFilter
-  Tokens.testFilter
+  Tokens.runAll
   return ()
