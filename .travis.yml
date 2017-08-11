@@ -5,6 +5,7 @@ services:
 cache:
   directories:
   - $HOME/.stack
+  - $TRAVIS_BUILD_DIR/.stack-work
 addons:
   apt:
     packages:
@@ -35,7 +36,7 @@ install:
 
 before_script:
 # start elastic
-- docker run -p 9200:9200 -e "http.host=0.0.0.0" -e "transport.host=127.0.0.1" docker.elastic.co/elasticsearch/elasticsearch:5.5.1 &
+- docker run -p 9200:9200 -e "http.host=0.0.0.0" -e "transport.host=127.0.0.1" -e "xpack.security.enabled=false" docker.elastic.co/elasticsearch/elasticsearch:5.5.1 &
 
 script:
 - stack --no-terminal build -j2 --pedantic
