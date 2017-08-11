@@ -13,6 +13,7 @@ import qualified Data.Aeson.QQ          as Aeson.QQ
 import qualified Data.ByteString.Lazy   as ByteString.Lazy
 import qualified Data.HashMap.Lazy      as HashMap.Lazy
 import qualified Data.Maybe             as Maybe
+import           Data.Semigroup         ((<>))
 import qualified Data.Text              as Text
 import qualified Data.Text.Encoding     as Text.Encoding
 import qualified Data.Vector            as Vector
@@ -200,8 +201,8 @@ printAnalysis text = do
 baseRequest :: HTTP.Simple.Request
 baseRequest
   = HTTP.Simple.setRequestMethod "GET"
-  . HTTP.Simple.setRequestPort 9200
-  . HTTP.Simple.setRequestHost "localhost"
+  . HTTP.Simple.setRequestPort port
+  . HTTP.Simple.setRequestHost (Text.Encoding.encodeUtf8 host)
   $ HTTP.Simple.defaultRequest
 
 printHits :: [Bloodhound.Hit Aeson.Object] -> IO ()
@@ -221,7 +222,7 @@ printHits hits = do
   mapM_ printHit $ zip [1..] hits
 
 server :: Bloodhound.Server
-server = Bloodhound.Server "http://localhost:9200"
+server = Bloodhound.Server $ "http://" <> host <> ":" <> (Text.pack . show) port
 
 tmdbIndexName :: Bloodhound.IndexName
 tmdbIndexName = Bloodhound.IndexName "tmdb"
@@ -231,3 +232,9 @@ movieMappingName = Bloodhound.MappingName "movie"
 
 tmdbPath :: FilePath
 tmdbPath = "relevant-search-book/ipython/tmdb.json"
+
+host :: Text.Text
+host = "localhost"
+
+port :: Int
+port = 9200
