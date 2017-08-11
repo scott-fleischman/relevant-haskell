@@ -4,6 +4,7 @@
 
 module TMDB where
 
+import qualified Common
 import           Control.Lens           ((^?))
 import qualified Control.Lens           as Lens
 import qualified Control.Monad.IO.Class as Monad.IO
@@ -18,7 +19,6 @@ import qualified Data.Text              as Text
 import qualified Data.Text.Encoding     as Text.Encoding
 import qualified Data.Vector            as Vector
 import qualified Database.V5.Bloodhound as Bloodhound
-import qualified Extra
 import qualified Network.HTTP.Client    as HTTP.Client
 import qualified Network.HTTP.Simple    as HTTP.Simple
 import qualified Text.Printf            as Printf
@@ -143,10 +143,10 @@ explainSearch searchValue = do
       = HTTP.Simple.setRequestBodyJSON query
       . HTTP.Simple.setRequestQueryString [("explain", Nothing)]
       . HTTP.Simple.setRequestPath "/tmdb/movie/_validate/query"
-      $ baseRequest
+      $ Common.baseRequest
 
   response :: HTTP.Simple.Response Aeson.Value <- HTTP.Simple.httpJSON request
-  Extra.pPrintResponse response
+  Common.pPrintResponse response
 
 -- Listing 3.12
 explainRelevanceScoring :: Bloodhound.Query -> IO ()
@@ -160,9 +160,9 @@ explainRelevanceScoring query = do
     |]
 
     request
-      = HTTP.Simple.setRequestBody (HTTP.Client.RequestBodyBS . ByteString.Lazy.toStrict . Aeson.encode $ body)
+      = HTTP.Simple.setRequestBodyJSON body
       . HTTP.Simple.setRequestPath "/tmdb/movie/_search"
-      $ baseRequest
+      $ Common.baseRequest
 
   response :: HTTP.Simple.Response Aeson.Value <- HTTP.Simple.httpJSON request
 
@@ -177,7 +177,7 @@ explainRelevanceScoring query = do
       . Aeson.Lens.key "title"
       . Aeson.Lens._String
 
-  Extra.pPrintJSON . Maybe.fromMaybe (Aeson.object []) $
+  Common.pPrintJSON . Maybe.fromMaybe (Aeson.object []) $
     result
       ^? Aeson.Lens.key "hits"
       . Aeson.Lens.key "hits"
@@ -193,17 +193,10 @@ printAnalysis text = do
       = HTTP.Simple.setRequestBody (HTTP.Client.RequestBodyBS . Text.Encoding.encodeUtf8 $ text)
       . HTTP.Simple.setRequestQueryString [("analyzer", Just "standard")]
       . HTTP.Simple.setRequestPath "/tmdb/_analyze"
-      $ baseRequest
+      $ Common.baseRequest
 
   response :: HTTP.Simple.Response Aeson.Value <- HTTP.Simple.httpJSON request
-  Extra.pPrintResponse response
-
-baseRequest :: HTTP.Simple.Request
-baseRequest
-  = HTTP.Simple.setRequestMethod "GET"
-  . HTTP.Simple.setRequestPort port
-  . HTTP.Simple.setRequestHost (Text.Encoding.encodeUtf8 host)
-  $ HTTP.Simple.defaultRequest
+  Common.pPrintResponse response
 
 printHits :: [Bloodhound.Hit Aeson.Object] -> IO ()
 printHits hits = do
@@ -222,7 +215,7 @@ printHits hits = do
   mapM_ printHit $ zip [1..] hits
 
 server :: Bloodhound.Server
-server = Bloodhound.Server $ "http://" <> host <> ":" <> (Text.pack . show) port
+server = Bloodhound.Server $ "http://" <> Common.host <> ":" <> (Text.pack . show) Common.port
 
 tmdbIndexName :: Bloodhound.IndexName
 tmdbIndexName = Bloodhound.IndexName "tmdb"
@@ -232,9 +225,3 @@ movieMappingName = Bloodhound.MappingName "movie"
 
 tmdbPath :: FilePath
 tmdbPath = "relevant-search-book/ipython/tmdb.json"
-
-host :: Text.Text
-host = "127.0.0.1"
-
-port :: Int
-port = 9200
