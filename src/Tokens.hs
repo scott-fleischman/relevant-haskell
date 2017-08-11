@@ -38,9 +38,22 @@ createFilter = do
 
     request
       = HTTP.Simple.setRequestBodyJSON body
-      . HTTP.Simple.setRequestMethod "POST"
+      . HTTP.Simple.setRequestMethod "PUT"
       . HTTP.Simple.setRequestPath "/example"
       $ Common.baseRequest
 
+  response :: HTTP.Simple.Response Aeson.Value <- HTTP.Simple.httpJSON request
+  Common.pPrintResponse response
+
+testFilter :: IO ()
+testFilter = do
+  let
+    request
+      = HTTP.Simple.setRequestQueryString
+        [ ("analyzer", Just "standard_with_acronyms")
+        , ("text", Just "I.B.M. versus IBM versus ibm")
+        ]
+      . HTTP.Simple.setRequestPath "/example/_analyze"
+      $ Common.baseRequest
   response :: HTTP.Simple.Response Aeson.Value <- HTTP.Simple.httpJSON request
   Common.pPrintResponse response
