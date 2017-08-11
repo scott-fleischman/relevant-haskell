@@ -4,7 +4,6 @@
 module Common where
 
 import qualified Data.Aeson           as Aeson
-import qualified Data.ByteString      as ByteString
 import qualified Data.ByteString.Lazy as ByteString.Lazy
 import           Data.Semigroup       ((<>))
 import qualified Data.Text            as Text
@@ -42,37 +41,37 @@ baseRequest
   . HTTP.Simple.setRequestHost (Text.Encoding.encodeUtf8 host)
   $ HTTP.Simple.defaultRequest
 
-createIndex :: Aeson.ToJSON a => ByteString.ByteString -> a -> IO ()
+createIndex :: Aeson.ToJSON a => Text.Text -> a -> IO ()
 createIndex name settings
   = sendRequest_
   . HTTP.Simple.setRequestBodyJSON settings
   . HTTP.Simple.setRequestMethod "PUT"
-  . HTTP.Simple.setRequestPath ("/" <> name)
+  . HTTP.Simple.setRequestPath (Text.Encoding.encodeUtf8 ("/" <> name))
   $ baseRequest
 
-deleteIndex :: ByteString.ByteString -> IO ()
+deleteIndex :: Text.Text -> IO ()
 deleteIndex name
   = sendRequest_
   . HTTP.Simple.setRequestMethod "DELETE"
-  . HTTP.Simple.setRequestPath ("/" <> name)
+  . HTTP.Simple.setRequestPath (Text.Encoding.encodeUtf8 ("/" <> name))
   $ baseRequest
 
-indexDocument :: Aeson.ToJSON a => ByteString.ByteString -> ByteString.ByteString -> ByteString.ByteString -> a -> IO ()
+indexDocument :: Aeson.ToJSON a => Text.Text -> Text.Text -> Text.Text -> a -> IO ()
 indexDocument indexName typeName documentId document
   = sendRequest_
   . HTTP.Simple.setRequestBodyJSON document
   . HTTP.Simple.setRequestMethod "PUT"
-  . HTTP.Simple.setRequestPath ("/" <> indexName <> "/" <> typeName <> "/" <> documentId)
+  . HTTP.Simple.setRequestPath (Text.Encoding.encodeUtf8 ("/" <> indexName <> "/" <> typeName <> "/" <> documentId))
   $ baseRequest
 
-analyzeText :: ByteString.ByteString -> ByteString.ByteString -> ByteString.ByteString -> IO ()
+analyzeText :: Text.Text -> Text.Text -> Text.Text -> IO ()
 analyzeText indexName analyzerName text
   = sendRequest_
   . HTTP.Simple.setRequestQueryString
-    [ ("analyzer", Just analyzerName)
-    , ("text", Just text)
+    [ ("analyzer", (Just . Text.Encoding.encodeUtf8) analyzerName)
+    , ("text", (Just . Text.Encoding.encodeUtf8) text)
     ]
-  . HTTP.Simple.setRequestPath ("/" <> indexName <> "/_analyze")
+  . HTTP.Simple.setRequestPath (Text.Encoding.encodeUtf8 ("/" <> indexName <> "/_analyze"))
   $ Common.baseRequest
 
 sendRequest_ :: HTTP.Simple.Request -> IO ()
@@ -82,8 +81,7 @@ sendRequest_ request = do
 
 sendRequest :: HTTP.Simple.Request -> IO (HTTP.Simple.Response Aeson.Value)
 sendRequest request = do
-  Pretty.Simple.pPrint request
+  print request
   response <- HTTP.Simple.httpJSON request
   Common.pPrintResponse response
-  putStrLn ""
   return response

@@ -11,18 +11,14 @@ import qualified Data.Aeson          as Aeson
 import qualified Data.Aeson.QQ       as Aeson.QQ
 import qualified Data.ByteString     as ByteString
 import           Data.Semigroup      ((<>))
+import qualified Data.Text           as Text
 import qualified Network.HTTP.Simple as HTTP.Simple
 
 runAll :: IO ()
 runAll = do
-  -- you can use this to comment out blocks
-  -- and still compile code without unused warnings
-  Monad.when False $ return ()
+  standardCloneAnalyzer
 
   Monad.when False $ do
-    createStandardCloneAnalyzer
-    testStandardCloneAnalyzer
-
     createEnglishCloneAnalyzer
     testEnglishCloneAnalyzerFlower
     testEnglishCloneAnalyzerSilly
@@ -34,7 +30,7 @@ runAll = do
     testPhoneticAnalyzerDalaiLama
     testPhoneticAnalyzerTallLlama
 
-  createMyLibraryData
+    createMyLibraryData
 
   Monad.when False $ do
     createAcronymAnalyzer
@@ -46,13 +42,20 @@ runAll = do
   return ()
 
 -- Listing 4.1 Recreating the standard analyzer
-createStandardCloneAnalyzer :: IO ()
-createStandardCloneAnalyzer = createAnalyzer "my_library" [Aeson.QQ.aesonQQ|
+standardCloneAnalyzer :: IO ()
+standardCloneAnalyzer = do
+  putStrLn "\nstandard_clone analyzer"
+  let
+    indexName = "my_library"
+    analyzerName = "standard_clone"
+    analyzerNameString = Text.unpack analyzerName
+  Common.deleteIndex indexName
+  Common.createIndex indexName [Aeson.QQ.aesonQQ|
 {
   "settings": {
     "analysis": {
       "analyzer": {
-        "standard_clone": {
+        $analyzerNameString: {
           "tokenizer": "standard",
           "filter": [
             "standard",
@@ -64,13 +67,8 @@ createStandardCloneAnalyzer = createAnalyzer "my_library" [Aeson.QQ.aesonQQ|
     }
   }
 }
-  |]
-
-testStandardCloneAnalyzer :: IO ()
-testStandardCloneAnalyzer = testAnalyzer "my_library"
-  [ ("analyzer", Just "standard_clone")
-  , ("text", Just "Dr. Strangelove: Or How I Learned to Stop Worrying and Love the Bomb")
-  ]
+    |]
+  Common.analyzeText indexName analyzerName "Dr. Strangelove: Or How I Learned to Stop Worrying and Love the Bomb"
 
 -- Listing 4.2 Recreating the English analyzer
 createEnglishCloneAnalyzer :: IO ()
