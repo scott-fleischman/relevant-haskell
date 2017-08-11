@@ -44,7 +44,7 @@ runAll = do
 -- Listing 4.1 Recreating the standard analyzer
 standardCloneAnalyzer :: IO ()
 standardCloneAnalyzer = do
-  putStrLn "\nstandard_clone analyzer"
+  Common.printHeader "standard_clone analyzer"
   let
     indexName = "my_library"
     analyzerName = "standard_clone"

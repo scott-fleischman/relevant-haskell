@@ -25,8 +25,33 @@ pPrintJSON
 pPrintToJSON :: Aeson.ToJSON a => a -> IO ()
 pPrintToJSON = pPrintJSON . Aeson.toJSON
 
+printRequest :: HTTP.Client.Request -> IO ()
+printRequest request = do
+  putStrLn
+    $ (show . HTTP.Client.method) request
+    ++ " "
+    ++ (show . HTTP.Client.path) request
+    ++ (Text.unpack . Text.Encoding.decodeUtf8 . HTTP.Client.queryString) request
+  let
+    printJSON bytes =
+      case Aeson.decode bytes of
+        Nothing                    -> return ()
+        Just (json :: Aeson.Value) -> pPrintJSON json
+  case HTTP.Client.requestBody request of
+    HTTP.Client.RequestBodyLBS lazyBody -> printJSON lazyBody
+    HTTP.Client.RequestBodyBS body -> printJSON . ByteString.Lazy.fromStrict $ body
+    _ -> return ()
+
 pPrintResponse :: HTTP.Client.Response Aeson.Value -> IO ()
 pPrintResponse = pPrintJSON . HTTP.Client.responseBody
+
+printHeader :: Text.Text -> IO ()
+printHeader name = do
+  putStrLn ""
+  putStrLn "***"
+  putStrLn $ "*** " <> Text.unpack name
+  putStrLn "***"
+
 
 host :: Text.Text
 host = "127.0.0.1"
@@ -81,7 +106,8 @@ sendRequest_ request = do
 
 sendRequest :: HTTP.Simple.Request -> IO (HTTP.Simple.Response Aeson.Value)
 sendRequest request = do
-  print request
+  printRequest request
   response <- HTTP.Simple.httpJSON request
   Common.pPrintResponse response
+  putStrLn ""
   return response
