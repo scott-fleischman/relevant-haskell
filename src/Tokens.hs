@@ -26,10 +26,9 @@ runAll = do
 
   singleField
 
-  Monad.when False $ do
-    createAcronymAnalyzer
-    testAcronymAnalyzer
+  acronymAnalyzer
 
+  Monad.when False $ do
     createPhoneNumberAnalyzer
     testPhoneNumberAnalyzer
 
@@ -210,8 +209,15 @@ singleField = do
   doSearch
 
 -- Section 4.1.1 Acronyms
-createAcronymAnalyzer :: IO ()
-createAcronymAnalyzer = createAnalyzer "example" [Aeson.QQ.aesonQQ|
+acronymAnalyzer :: IO ()
+acronymAnalyzer = do
+  let
+    indexName = "example"
+    analyzerName = "standard_with_acronyms"
+    analyzerNameString = Text.unpack analyzerName
+  Common.printHeader $ analyzerName <> " analyzer"
+  Common.deleteIndex indexName
+  Common.createIndex indexName [Aeson.QQ.aesonQQ|
 {
   "settings": {
     "analysis": {
@@ -224,7 +230,7 @@ createAcronymAnalyzer = createAnalyzer "example" [Aeson.QQ.aesonQQ|
         }
       },
       "analyzer": {
-        "standard_with_acronyms": {
+        $analyzerNameString: {
           "tokenizer": "standard",
           "filter": ["standard", "lowercase", "acronyms"]
         }
@@ -234,13 +240,9 @@ createAcronymAnalyzer = createAnalyzer "example" [Aeson.QQ.aesonQQ|
 }
   |]
 
--- Section 4.1.1 Phone numbers
-testAcronymAnalyzer :: IO ()
-testAcronymAnalyzer = testAnalyzer "example"
-  [ ("analyzer", Just "standard_with_acronyms")
-  , ("text", Just "I.B.M. versus IBM versus ibm")
-  ]
+  Common.analyzeText indexName analyzerName "I.B.M. versus IBM versus ibm"
 
+  -- Section 4.1.1 Phone numbers
 createPhoneNumberAnalyzer :: IO ()
 createPhoneNumberAnalyzer = createAnalyzer "my_library" $ [Aeson.QQ.aesonQQ|
 {
