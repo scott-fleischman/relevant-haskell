@@ -27,10 +27,7 @@ runAll = do
   singleField
 
   acronymAnalyzer
-
-  Monad.when False $ do
-    createPhoneNumberAnalyzer
-    testPhoneNumberAnalyzer
+  phoneNumberAnalyzer
 
   return ()
 
@@ -243,8 +240,15 @@ acronymAnalyzer = do
   Common.analyzeText indexName analyzerName "I.B.M. versus IBM versus ibm"
 
   -- Section 4.1.1 Phone numbers
-createPhoneNumberAnalyzer :: IO ()
-createPhoneNumberAnalyzer = createAnalyzer "my_library" $ [Aeson.QQ.aesonQQ|
+phoneNumberAnalyzer :: IO ()
+phoneNumberAnalyzer = do
+  let
+    indexName = "my_library"
+    analyzerName = "phone_num"
+    analyzerNameString = Text.unpack analyzerName
+  Common.printHeader $ analyzerName <> " analyzer"
+  Common.deleteIndex indexName
+  Common.createIndex indexName [Aeson.QQ.aesonQQ|
 {
   "settings": {
     "analysis": {
@@ -261,7 +265,7 @@ createPhoneNumberAnalyzer = createAnalyzer "my_library" $ [Aeson.QQ.aesonQQ|
         }
       },
       "analyzer": {
-        "phone_num": {
+        $analyzerNameString: {
           "tokenizer": "keyword",
           "filter": ["phone_num_filter", "phone_num_parts"]
         }
@@ -271,11 +275,7 @@ createPhoneNumberAnalyzer = createAnalyzer "my_library" $ [Aeson.QQ.aesonQQ|
 }
   |]
 
-testPhoneNumberAnalyzer :: IO ()
-testPhoneNumberAnalyzer = testAnalyzer "my_library"
-  [ ("analyzer", Just "phone_num")
-  , ("text", Just "1(800)867-5309")
-  ]
+  Common.analyzeText indexName analyzerName "1(800)867-5309"
 
 createRetailAnalyzer :: IO ()
 createRetailAnalyzer = createAnalyzer "retail" $ [Aeson.QQ.aesonQQ|
