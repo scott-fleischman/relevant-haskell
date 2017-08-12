@@ -110,6 +110,14 @@ analyzeText indexName analyzerName text
   . HTTP.Simple.setRequestPath (Text.Encoding.encodeUtf8 ("/" <> indexName <> "/_analyze"))
   $ Common.baseRequest
 
+searchJSON :: Aeson.ToJSON a => Text.Text -> Text.Text -> a -> IO ()
+searchJSON indexName typeName query
+  = sendRequest_
+  . HTTP.Simple.setRequestBodyJSON query
+  . HTTP.Simple.setRequestMethod "GET"
+  . HTTP.Simple.setRequestPath (Text.Encoding.encodeUtf8 ("/" <> indexName <> "/" <> typeName <> "/_search"))
+  $ baseRequest
+
 sendRequest_ :: HTTP.Simple.Request -> IO ()
 sendRequest_ request = do
   _ <- sendRequest request

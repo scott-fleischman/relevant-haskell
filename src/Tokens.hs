@@ -21,10 +21,10 @@ runAll = do
 
   -- this requires the analysis-phonetic plugin
   -- https://www.elastic.co/guide/en/elasticsearch/plugins/current/analysis-phonetic.html
-  phoneticAnalyzer
-
   Monad.when False $ do
-    createMyLibraryData
+    phoneticAnalyzer
+
+  singleField
 
   Monad.when False $ do
     createAcronymAnalyzer
@@ -153,21 +153,61 @@ phoneticAnalyzer = do
   Common.analyzeText indexName analyzerName "message from Dalai Lama"
   Common.analyzeText indexName analyzerName "message from tall llama"
 
-
-createMyLibraryData :: IO ()
-createMyLibraryData = do
-  Common.deleteIndex "my_library"
-  Common.createIndex "my_library" [Aeson.QQ.aesonQQ|
+singleField :: IO ()
+singleField = do
+  let
+    indexName = "my_library"
+    typeName = "example"
+  Common.printHeader "single field"
+  Common.deleteIndex indexName
+  let
+    defaultSettings = [Aeson.QQ.aesonQQ|
 {
   "settings": {
     "number_of_shards": 1
   }
 }
     |]
+    _englishSettings = [Aeson.QQ.aesonQQ|
+{
+  "settings": {
+    "number_of_shards": 1
+  },
+  "mappings": {
+    "example": {
+      "properties": {
+        "title": {
+          "type":     "string",
+          "analyzer": "english"
+        }
+      }
+    }
+  }
+}
+    |]
+  Common.createIndex indexName defaultSettings
 
-  Common.indexDocument "my_library" "example" "1" [Aeson.QQ.aesonQQ| { "title":"apple apple apple apple apple"} |]
-  Common.indexDocument "my_library" "example" "2" [Aeson.QQ.aesonQQ| { "title":"apple apple apple banana banana"} |]
-  Common.indexDocument "my_library" "example" "3" [Aeson.QQ.aesonQQ| { "title":"apple banana blueberry coconut"} |]
+  Common.indexDocument indexName typeName "1" [Aeson.QQ.aesonQQ| { "title":"apple apple apple apple apple"} |]
+  Common.indexDocument indexName typeName "2" [Aeson.QQ.aesonQQ| { "title":"apple apple apple banana banana"} |]
+  Common.indexDocument indexName typeName "3" [Aeson.QQ.aesonQQ| { "title":"apple banana blueberry coconut"} |]
+  Common.refreshIndex indexName
+
+  let doSearch = Common.searchJSON indexName typeName [Aeson.QQ.aesonQQ|
+{
+  "explain": "true",
+  "query": {
+    "match": {
+      "title": "apple"
+    }
+  }
+}
+    |]
+  doSearch
+
+  Common.indexDocument indexName typeName "4" [Aeson.QQ.aesonQQ| { "title":"apples apple"} |]
+  Common.refreshIndex indexName
+
+  doSearch
 
 -- Section 4.1.1 Acronyms
 createAcronymAnalyzer :: IO ()
