@@ -6,13 +6,10 @@
 module Tokens where
 
 import qualified Common
-import qualified Control.Monad       as Monad
-import qualified Data.Aeson          as Aeson
-import qualified Data.Aeson.QQ       as Aeson.QQ
-import qualified Data.ByteString     as ByteString
-import           Data.Semigroup      ((<>))
-import qualified Data.Text           as Text
-import qualified Network.HTTP.Simple as HTTP.Simple
+import qualified Control.Monad  as Monad
+import qualified Data.Aeson.QQ  as Aeson.QQ
+import           Data.Semigroup ((<>))
+import qualified Data.Text      as Text
 
 runAll :: IO ()
 runAll = do
@@ -336,25 +333,3 @@ retailAnalyzer = do
   }
 }
   |]
-
-createAnalyzer :: Aeson.ToJSON a => ByteString.ByteString -> a -> IO ()
-createAnalyzer indexName body = do
-  let
-    request
-      = HTTP.Simple.setRequestBodyJSON body
-      . HTTP.Simple.setRequestMethod "PUT"
-      . HTTP.Simple.setRequestPath ("/" <> indexName)
-      $ Common.baseRequest
-
-  response :: HTTP.Simple.Response Aeson.Value <- HTTP.Simple.httpJSON request
-  Common.pPrintResponse response
-
-testAnalyzer :: ByteString.ByteString -> [(ByteString.ByteString, Maybe ByteString.ByteString)] -> IO ()
-testAnalyzer indexName queryString = do
-  let
-    request
-      = HTTP.Simple.setRequestQueryString queryString
-      . HTTP.Simple.setRequestPath ("/" <> indexName <> "/_analyze")
-      $ Common.baseRequest
-  response :: HTTP.Simple.Response Aeson.Value <- HTTP.Simple.httpJSON request
-  Common.pPrintResponse response
