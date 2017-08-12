@@ -28,6 +28,7 @@ runAll = do
 
   acronymAnalyzer
   phoneNumberAnalyzer
+  retailAnalyzer
 
   return ()
 
@@ -277,8 +278,15 @@ phoneNumberAnalyzer = do
 
   Common.analyzeText indexName analyzerName "1(800)867-5309"
 
-createRetailAnalyzer :: IO ()
-createRetailAnalyzer = createAnalyzer "retail" $ [Aeson.QQ.aesonQQ|
+retailAnalyzer :: IO ()
+retailAnalyzer = do
+  let
+    indexName = "retail"
+    analyzerName = "retail_analyzer"
+    analyzerNameString = Text.unpack analyzerName
+  Common.printHeader $ analyzerName <> " analyzer"
+  Common.deleteIndex indexName
+  Common.createIndex indexName [Aeson.QQ.aesonQQ|
 {
   "settings": {
     "analysis": {
@@ -288,10 +296,22 @@ createRetailAnalyzer = createAnalyzer "retail" $ [Aeson.QQ.aesonQQ|
           "synonyms": [
             "dress shoe,dress shoes => dress_shoe, shoe"
           ]
+        },
+        "english_possessive_stemmer": {
+          "type": "stemmer",
+          "name": "possessive_english"
+        },
+        "english_keywords": {
+          "type": "keyword_marker",
+          "keywords": ["skies"]
+        },
+        "english_stemmer": {
+          "type": "stemmer",
+          "language": "english"
         }
       },
       "analyzer": {
-        "retail_analyzer": {
+        $analyzerNameString: {
           "tokenizer": "standard",
           "filter": [
             "english_possessive_stemmer",
@@ -309,7 +329,7 @@ createRetailAnalyzer = createAnalyzer "retail" $ [Aeson.QQ.aesonQQ|
       "properties": {
         "desc": {
           "type": "string",
-          "analyzer": "retail_analyzer"
+          "analyzer": #{analyzerName}
         }
       }
     }
