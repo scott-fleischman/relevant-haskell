@@ -29,6 +29,10 @@ runAll = do
   retailAnalyzer
   retailAnalyzerAsymmetric
 
+  pathHierarchyAnalyzer
+
+  musicAnalyzer
+
   return ()
 
 -- Listing 4.1 Recreating the standard analyzer
@@ -432,3 +436,122 @@ retailAnalyzerAsymmetric = do
   Common.searchJSON indexName typeName [Aeson.QQ.aesonQQ| { "query": { "match": { "desc": "dress" }}} |]
   Common.searchJSON indexName typeName [Aeson.QQ.aesonQQ| { "query": { "match": { "desc": "shoes" }}} |]
   Common.searchJSON indexName typeName [Aeson.QQ.aesonQQ| { "query": { "match": { "desc": "dress shoes" }}} |]
+
+pathHierarchyAnalyzer :: IO ()
+pathHierarchyAnalyzer = do
+  let
+    indexName = "catalog"
+    analyzerName = "path_hierarchy"
+    analyzerNameString = Text.unpack analyzerName
+  Common.printHeader $ analyzerName <> " analyzer"
+  Common.deleteIndex indexName
+  Common.createIndex indexName [Aeson.QQ.aesonQQ|
+{
+  "settings": {
+    "analysis": {
+      "analyzer": {
+        $analyzerNameString: {
+          "tokenizer": "path_hierarchy"
+        }
+      }
+    }
+  },
+  "mappings": {
+    "item": {
+      "properties": {
+        "inventory_dir": {
+          "type": "string",
+          "analyzer": #{analyzerName}
+        }
+      }
+    }
+  }
+}
+  |]
+
+  let typeName = "item"
+  Common.indexDocument indexName typeName "1" [Aeson.QQ.aesonQQ|
+    { "inventory_dir": "/fruit/apples/fuji"
+    , "description":"crisp, sweet-flavored, long shelf-life" }
+    |]
+  Common.indexDocument indexName typeName "2" [Aeson.QQ.aesonQQ|
+    { "inventory_dir": "/fruit/apples/gala"
+    , "description ":"sweet, pleasant apple"}
+    |]
+  Common.indexDocument indexName typeName "3" [Aeson.QQ.aesonQQ|
+    { "inventory_dir": "/fruit"
+    , "description ":"edible, seed-bearing portion of plants" }
+    |]
+  Common.refreshIndex indexName
+
+  Common.searchJSON indexName typeName [Aeson.QQ.aesonQQ|
+  {
+    "query": {
+      "bool": {
+        "should": [{
+          "match": {
+            "description": "sweet"
+          }
+        }],
+        "filter": [{
+          "term": {
+            "inventory_dir": "/fruit/apples/fuji"
+          }
+        }]
+      }
+    }
+  }
+  |]
+
+musicAnalyzer :: IO ()
+musicAnalyzer = do
+  let
+    indexName = "music"
+    analyzerName = "parsons"
+    analyzerNameString = Text.unpack analyzerName
+  Common.printHeader $ analyzerName <> " analyzer"
+  Common.deleteIndex indexName
+  Common.createIndex indexName [Aeson.QQ.aesonQQ|
+{
+  "settings": {
+    "analysis": {
+      "filter": {
+        "parsons-ngram": {
+          "type": "nGram",
+          "min_gram": 4,
+          "max_gram": 7
+        }
+      },
+      "analyzer": {
+        $analyzerNameString: {
+          "tokenizer": "keyword",
+          "filter": ["parsons-ngram"]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "song": {
+      "properties": {
+        "parsons": {
+          "type": "string",
+          "analyzer": #{analyzerName}
+        }
+      }
+    }
+  }
+}
+      |]
+
+  let typeName = "song"
+  Common.indexDocument indexName typeName "1" [Aeson.QQ.aesonQQ|
+    { "parsons": "*RUUDUD"
+    , "name":"Yankee Doodle" }
+    |]
+  Common.indexDocument indexName typeName "2" [Aeson.QQ.aesonQQ|
+    { "parsons": "*RRDURDURDRD"
+    , "name":"Old MacDonald" }
+  |]
+  Common.refreshIndex indexName
+
+  Common.searchJSON indexName typeName [Aeson.QQ.aesonQQ| { "query": { "match": { "parsons": "RDRD" }}} |]
