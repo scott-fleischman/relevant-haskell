@@ -25,7 +25,9 @@ runAll = do
 
   acronymAnalyzer
   phoneNumberAnalyzer
+
   retailAnalyzer
+  retailAnalyzerAsymmetric
 
   return ()
 
@@ -275,6 +277,7 @@ phoneNumberAnalyzer = do
 
   Common.analyzeText indexName analyzerName "1(800)867-5309"
 
+-- Listing 4.4
 retailAnalyzer :: IO ()
 retailAnalyzer = do
   let
@@ -333,3 +336,99 @@ retailAnalyzer = do
   }
 }
   |]
+
+  let typeName = "items"
+  Common.indexDocument indexName typeName "1" [Aeson.QQ.aesonQQ| { "desc": "bob's brand dress shoes are the bomb diggity"} |]
+  Common.indexDocument indexName typeName "2" [Aeson.QQ.aesonQQ| { "desc": "this little black dress is sure to impress"} |]
+  Common.indexDocument indexName typeName "3" [Aeson.QQ.aesonQQ| { "desc": "tennis shoes... you know, for tennis"} |]
+  Common.refreshIndex indexName
+
+  Common.searchJSON indexName typeName [Aeson.QQ.aesonQQ| { "query": { "match": { "desc": "dress" }}} |]
+  Common.searchJSON indexName typeName [Aeson.QQ.aesonQQ| { "query": { "match": { "desc": "shoes" }}} |]
+  Common.searchJSON indexName typeName [Aeson.QQ.aesonQQ| { "query": { "match": { "desc": "dress shoes" }}} |]
+
+-- Listing 4.5
+retailAnalyzerAsymmetric :: IO ()
+retailAnalyzerAsymmetric = do
+  Common.printHeader "retail_analyzer_index and retail_analyzer_search analyzers"
+  let indexName = "retail"
+  Common.deleteIndex indexName
+  Common.createIndex indexName [Aeson.QQ.aesonQQ|
+{
+  "settings": {
+    "analysis": {
+      "filter": {
+        "retail_syn_filter_index": {
+          "type": "synonym",
+          "synonyms": ["dress shoe,dress shoes => dress_shoe, shoe"]
+        },
+        "retail_syn_filter_search": {
+          "type": "synonym",
+          "synonyms": ["dress shoe,dress shoes => dress_shoe"]
+        },
+        "english_possessive_stemmer": {
+          "type": "stemmer",
+          "name": "possessive_english"
+        },
+        "english_keywords": {
+          "type": "keyword_marker",
+          "keywords": ["skies"]
+        },
+        "english_stemmer": {
+          "type": "stemmer",
+          "language": "english"
+        },
+        "english_stop": {
+          "type": "stop",
+          "stopwords": "_english_"
+        }
+      },
+      "analyzer": {
+        "retail_analyzer_index": {
+          "tokenizer": "standard",
+          "filter": [
+            "english_possessive_stemmer",
+            "lowercase",
+            "retail_syn_filter_index",
+            "english_stop",
+            "english_keywords",
+            "english_stemmer"
+          ]
+        },
+        "retail_analyzer_search": {
+          "tokenizer": "standard",
+          "filter": [
+            "english_possessive_stemmer",
+            "lowercase",
+            "retail_syn_filter_search",
+            "english_stop",
+            "english_keywords",
+            "english_stemmer"
+          ]
+        }
+      }
+    }
+  },
+  "mappings": {
+    "items": {
+      "properties": {
+        "desc": {
+          "type": "string",
+          "analyzer": "retail_analyzer_index",
+          "search_analyzer": "retail_analyzer_search"
+        }
+      }
+    }
+  }
+}
+  |]
+
+  let typeName = "items"
+  Common.indexDocument indexName typeName "1" [Aeson.QQ.aesonQQ| { "desc": "bob's brand dress shoes are the bomb diggity"} |]
+  Common.indexDocument indexName typeName "2" [Aeson.QQ.aesonQQ| { "desc": "this little black dress is sure to impress"} |]
+  Common.indexDocument indexName typeName "3" [Aeson.QQ.aesonQQ| { "desc": "tennis shoes... you know, for tennis"} |]
+  Common.refreshIndex indexName
+
+  Common.searchJSON indexName typeName [Aeson.QQ.aesonQQ| { "query": { "match": { "desc": "dress" }}} |]
+  Common.searchJSON indexName typeName [Aeson.QQ.aesonQQ| { "query": { "match": { "desc": "shoes" }}} |]
+  Common.searchJSON indexName typeName [Aeson.QQ.aesonQQ| { "query": { "match": { "desc": "dress shoes" }}} |]
